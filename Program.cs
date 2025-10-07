@@ -20,17 +20,14 @@ namespace ipworker
                 throw new ArgumentException("Missing arguments!");
             }
 
-            string listName = args[0];
+            string WorkingListFilename = args[0];
 
-            string listAction = args[1];
-
-
+            string WorkingListAction = args[1];
 
 
 
-            string listFilename = listName + ".txt";
 
-            List<Cidr> baseCidrList = new List<Cidr>();
+            List<Cidr> WorkingCidrList = new List<Cidr>();
 
 
 
@@ -39,7 +36,7 @@ namespace ipworker
 
 
             /*******************************
-             * load list if possible
+             * load WorkingList if possible
              * ****************************/
 
             Console.WriteLine("");
@@ -47,18 +44,18 @@ namespace ipworker
             Console.WriteLine("");
 
 
-            if (System.IO.File.Exists(listFilename))
+            if (System.IO.File.Exists(WorkingListFilename))
             {
                 //read file
-                baseCidrList = ReadFile(listFilename);
+                WorkingCidrList = ReadFile(WorkingListFilename);
 
 
-                Console.WriteLine(baseCidrList.Count.ToString("N0") + " items loaded and prepared from list '" + listName + "'");
+                Console.WriteLine(WorkingCidrList.Count.ToString("N0") + " items loaded and prepared from list '" + WorkingListFilename + "'");
 
             }
             else
             {
-                Console.WriteLine("No data for list '" + listName + "' - no problemo");
+                Console.WriteLine("No data for list '" + WorkingListFilename + "' - no problemo");
             }
 
 
@@ -72,7 +69,7 @@ namespace ipworker
              * add
              * ****************************/
 
-            if (listAction.Equals("add", StringComparison.InvariantCultureIgnoreCase))
+            if (WorkingListAction.Equals("add", StringComparison.InvariantCultureIgnoreCase))
             {
 
 
@@ -102,9 +99,9 @@ namespace ipworker
 
                     if (cidrsToImport != null)
                     {
-                        baseCidrList.AddRange(cidrsToImport);
+                        WorkingCidrList.AddRange(cidrsToImport);
 
-                        Console.WriteLine("Total " + baseCidrList.Count.ToString("N0") + " items");
+                        Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " items");
                     }
                 }
                 else
@@ -121,9 +118,9 @@ namespace ipworker
 
                         if (cidrsToImport != null)
                         {
-                            baseCidrList.AddRange(cidrsToImport);
+                            WorkingCidrList.AddRange(cidrsToImport);
 
-                            Console.WriteLine("Total " + baseCidrList.Count.ToString("N0") + " items");
+                            Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " items");
                         }
 
                     }
@@ -134,7 +131,7 @@ namespace ipworker
 
 
 
-            if (listAction.Equals("aggregate", StringComparison.InvariantCultureIgnoreCase))
+            if (WorkingListAction.Equals("aggregate", StringComparison.InvariantCultureIgnoreCase))
             {
                 Console.WriteLine("");
                 Console.WriteLine("");
@@ -142,7 +139,7 @@ namespace ipworker
 
 
                 Console.WriteLine("Aggregate IPv4 into /24 prefixes - min count 2");
-                baseCidrList = baseCidrList.AggregateCidrs(System.Net.Sockets.AddressFamily.InterNetwork,24, 2);
+                WorkingCidrList = WorkingCidrList.AggregateCidrs(System.Net.Sockets.AddressFamily.InterNetwork,24, 2);
 
 
             }
@@ -150,7 +147,7 @@ namespace ipworker
 
 
 
-            if (listAction.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
+            if (WorkingListAction.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
             {
                 Console.WriteLine("");
                 Console.WriteLine("");
@@ -158,7 +155,7 @@ namespace ipworker
 
 
                 Console.WriteLine("Reset list");
-                baseCidrList.Clear();
+                WorkingCidrList.Clear();
 
 
             }
@@ -166,7 +163,7 @@ namespace ipworker
 
 
 
-            if (listAction.Equals("remove", StringComparison.InvariantCultureIgnoreCase))
+            if (WorkingListAction.Equals("remove", StringComparison.InvariantCultureIgnoreCase))
             {
 
 
@@ -219,9 +216,9 @@ namespace ipworker
                 {
                     Cidr toRemove = cidrsToRemove[r];
 
-                    for (int b = 0; b < baseCidrList.Count; b++)
+                    for (int b = 0; b < WorkingCidrList.Count; b++)
                     {
-                        Cidr baseListItem = baseCidrList[b];
+                        Cidr baseListItem = WorkingCidrList[b];
 
                         if (toRemove.IsWithin(baseListItem))
                         {
@@ -230,8 +227,8 @@ namespace ipworker
 
                             List<Cidr> n = baseListItem.Subtract(toRemove);
 
-                            baseCidrList.Remove(baseListItem);
-                            baseCidrList.AddRange(n);
+                            WorkingCidrList.Remove(baseListItem);
+                            WorkingCidrList.AddRange(n);
 
                             break;
                         }
@@ -239,7 +236,7 @@ namespace ipworker
                         {
                             //Console.WriteLine("Remove " + baseListItem + " - as it is covered by " + toRemove);
 
-                            baseCidrList.Remove(baseListItem);
+                            WorkingCidrList.Remove(baseListItem);
                             b--;
 
                         }
@@ -248,7 +245,7 @@ namespace ipworker
 
                 }
 
-                Console.WriteLine("Total " + baseCidrList.Count.ToString("N0") + " after removal");
+                Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " after removal");
 
 
             }
@@ -263,7 +260,7 @@ namespace ipworker
 
 
             /*******************************
-             * dumt list 
+             * dump WorkingList 
              * ****************************/
 
             Console.WriteLine("");
@@ -273,19 +270,19 @@ namespace ipworker
             Console.WriteLine("Dump list data");
 
             //null exsiting
-            System.IO.File.WriteAllText(listFilename, null);
+            System.IO.File.WriteAllText(WorkingListFilename, null);
 
             StringBuilder sb = new StringBuilder();
 
 
 
             Console.WriteLine("Sort");
-            baseCidrList.Sort();
+            WorkingCidrList.Sort();
 
             Console.WriteLine("Dedupe");
-            baseCidrList = baseCidrList.DeDupe();
+            WorkingCidrList = WorkingCidrList.DeDupe();
 
-            Console.WriteLine("Total " + baseCidrList.Count.ToString("N0") + " after dedupe");
+            Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " after dedupe");
 
 
 
@@ -293,17 +290,17 @@ namespace ipworker
 
 
             Console.WriteLine("Dump");
-            foreach (Cidr item in baseCidrList)
+            foreach (Cidr item in WorkingCidrList)
             {
                 sb.Append(item.ToString() + "\n");
             }
 
-            System.IO.File.WriteAllText(listFilename, sb.ToString());
+            System.IO.File.WriteAllText(WorkingListFilename, sb.ToString());
 
 
 
 
-            Console.WriteLine(baseCidrList.Count.ToString("N0") + " items dumped into list '" + listName + "'");
+            Console.WriteLine(WorkingCidrList.Count.ToString("N0") + " items dumped into list '" + WorkingListFilename + "'");
 
 
 
@@ -313,6 +310,11 @@ namespace ipworker
 
 
         }
+
+
+
+
+
 
         private static List<Cidr> ReadFile(string filename)
         {
