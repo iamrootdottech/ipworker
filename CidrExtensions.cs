@@ -33,8 +33,11 @@ namespace ipworker
             {
                 if (cidrList[o].BaseAddress.AddressFamily == family)
                 {
+                    //make a new prefix to test
                     Cidr cidrToTest = new Cidr(cidrList[o].BaseAddress, maxPrefixLength);
 
+                    //loop thrugh the cidr's and see if the match - if they do, and we match mincount - keep it
+                    //this is tupid simple and maybe not the most efficient way of doing it - but works
                     BigInteger matches = 0;
 
                     for (int i = o; i >= 0; i--)
@@ -56,6 +59,11 @@ namespace ipworker
                 cidrResult.Add(cidrList[o]);
             }
 
+            //add the last one as well
+            cidrResult.Add(cidrList[0]);
+
+
+            //order and dedupe
             cidrResult.Order();
 
             cidrResult.DeDupe();

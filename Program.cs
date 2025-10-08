@@ -22,7 +22,7 @@ namespace ipworker
             {
                 Console.WriteLine();
                 Console.WriteLine("Add a range of CIDR's to list");
-                Console.WriteLine("ipworker.exe [WorkingListFilename] add [file or url to add]");
+                Console.WriteLine("ipworker.exe [WorkingListFilename] add [file, filepattern or url to add]");
 
                 Console.WriteLine();
                 Console.WriteLine("Remove a range of CIDR's from list");
@@ -34,7 +34,7 @@ namespace ipworker
 
                 Console.WriteLine();
                 Console.WriteLine("Aggregate list");
-                Console.WriteLine("ipworker.exe [WorkingListFilename] aggregate");
+                Console.WriteLine("ipworker.exe [WorkingListFilename] aggregate [ipv4|ipv6] [prefix] [mincount]");
             }
             else
             {
@@ -178,19 +178,55 @@ namespace ipworker
                     Console.WriteLine("Aggregate WorkingList");
                     Console.WriteLine("==============");
 
+
+
+
+
                     if (!(args.Length >= 5))
                     {
                         throw new ArgumentException("Missing arguments!");
                     }
 
-                    /* need work
-                    int ipver = args[2];
-                    int prefix = args[3];
-                    int mincount = args[4];
+                    // assuming args[1], args[2], args[3] exist
+                    string arg2 = args[2].Trim().ToLower(); // 'ipv4' or 'ipv6'
+                    string arg3 = args[3].Trim();           // '/24', '/22', etc.
+                    string arg4 = args[4].Trim();           // numeric string
 
-                    Console.WriteLine("Aggregate IPv4 into /24 prefixes - min count 2");
-                    WorkingCidrList = WorkingCidrList.AggregateCidrs(System.Net.Sockets.AddressFamily.InterNetwork, 24, 2);
-                    */
+                    // 2 → 4 or 6
+                    System.Net.Sockets.AddressFamily ipVersion;
+                    if (arg2 == "ipv4")
+                    {
+                        ipVersion = System.Net.Sockets.AddressFamily.InterNetwork;
+                    }
+                    else if (arg2 == "ipv6")
+                    {
+                        ipVersion = System.Net.Sockets.AddressFamily.InterNetworkV6;
+                    }
+                    else
+                    {
+                        throw new ArgumentException("IP version must be either 'ipv4' or 'ipv6'.");
+                    }
+
+                    // 3 → number without leading '/'
+                    if (!arg3.StartsWith("/"))
+                    {
+                        throw new ArgumentException("Argument 3 must start with '/'.");
+                    }
+                    int prefixLength = int.Parse(arg3.Substring(1));
+
+                    // 4 → numeric value
+                    int number = int.Parse(arg4);
+
+
+
+
+                    Console.WriteLine("WorkingList count before aggregation: " + WorkingCidrList.Count.ToString("N0"));
+
+                    Console.WriteLine("Aggregate " + arg2 + " into /" + prefixLength + " prefixes - min count " + number);
+
+                    WorkingCidrList = WorkingCidrList.AggregateCidrs(ipVersion, prefixLength, number);
+
+                    Console.WriteLine("WorkingList count after aggregation: " + WorkingCidrList.Count.ToString("N0"));
 
                 }
 
@@ -473,6 +509,9 @@ namespace ipworker
 
 
                 string strPrepped = srcDataArr[l];
+                
+                //for proper matching (the patterns require whitespace after a hit)
+                strPrepped = strPrepped + " ";
 
                 //for reading csv
                 strPrepped = strPrepped.Replace(";", " ");
@@ -489,7 +528,7 @@ namespace ipworker
 
 
                 //ipv6 cidrs
-                importedCidrs = LoadCidrsFromStringInner(importedCidrs, strPrepped, "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(\\/((1(1[0-9]|2[0-8]))|([0-9][0-9])|([0-9])))");
+                importedCidrs = LoadCidrsFromStringInner(importedCidrs, strPrepped, "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(\\/((1(1[0-9]|2[0-8]))|([0-9][0-9])|([0-9])))\\s");
 
                 //ipv4 cidrs
                 importedCidrs = LoadCidrsFromStringInner(importedCidrs, strPrepped, "(([0-9]{1,3}\\.){3}[0-9]{1,3})/[0-9]{1,2}\\s");
