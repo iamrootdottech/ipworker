@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -99,7 +100,7 @@ namespace ipworker
                     Console.WriteLine("");
                     Console.WriteLine("");
 
-                    Console.WriteLine("Add");
+                    Console.WriteLine("Add to WorkingList");
                     Console.WriteLine("==============");
 
 
@@ -120,31 +121,39 @@ namespace ipworker
 
                         string content = new System.Net.WebClient().DownloadString(srcFilename);
 
-                        List<Cidr> cidrsToImport = LoadCidrsFromString(content);
+                        List<Cidr> cidrsToImport = LoadCidrsFromString(null, content);
 
                         if (cidrsToImport != null)
                         {
+                            Console.WriteLine("Total " + cidrsToImport.Count.ToString("N0") + " items found - add to WorkingList");
+
                             WorkingCidrList.AddRange(cidrsToImport);
 
-                            Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " items");
+                            Console.WriteLine("WorkingList total " + WorkingCidrList.Count.ToString("N0") + " items");
                         }
                     }
                     else
                     {
                         string[] files = Directory.GetFiles(Directory.GetCurrentDirectory(), srcFilename);
 
-                        foreach (string file in files)
+                        for (int f=0; f< files.Length;f++)
                         {
+                            if (f>0)
+                            {
+                                Console.WriteLine("");
+                            }
 
-                            Console.WriteLine("Add from file '" + file + "'");
+                            Console.WriteLine("Add from file '" + System.IO.Path.GetFileName(files[f]) + "'");
 
-                            List<Cidr> cidrsToImport = LoadCidrsFromFile(file);
+                            List<Cidr> cidrsToImport = LoadCidrsFromFile(files[f]);
 
                             if (cidrsToImport != null)
                             {
+                                Console.WriteLine("Total " + cidrsToImport.Count.ToString("N0") + " items found - add to WorkingList");
+                                
                                 WorkingCidrList.AddRange(cidrsToImport);
 
-                                Console.WriteLine("Total " + WorkingCidrList.Count.ToString("N0") + " items");
+                                Console.WriteLine("WorkingList total " + WorkingCidrList.Count.ToString("N0") + " items");
                             }
 
                         }
@@ -166,7 +175,7 @@ namespace ipworker
                     Console.WriteLine("");
                     Console.WriteLine("");
 
-                    Console.WriteLine("Aggregate");
+                    Console.WriteLine("Aggregate WorkingList");
                     Console.WriteLine("==============");
 
                     if (!(args.Length >= 5))
@@ -199,7 +208,7 @@ namespace ipworker
                     Console.WriteLine("");
                     Console.WriteLine("");
 
-                    Console.WriteLine("Reset");
+                    Console.WriteLine("Reset WorkingList");
                     Console.WriteLine("==============");
 
 
@@ -225,7 +234,7 @@ namespace ipworker
                     Console.WriteLine("");
                     Console.WriteLine("");
 
-                    Console.WriteLine("Remove");
+                    Console.WriteLine("Remove from WorkingList");
                     Console.WriteLine("==============");
 
 
@@ -383,9 +392,55 @@ namespace ipworker
             {
 
 
-                String srcData = System.IO.File.ReadAllText(filename);
+                //String srcData = System.IO.File.ReadAllText(filename);
 
-                List<Cidr> importedCidrs = LoadCidrsFromString(srcData);
+
+                List<Cidr> importedCidrs = new List<Cidr>();
+
+
+
+
+
+                const int ChunkSize = 8 * 1024 * 1024; 
+                using (System.IO.StreamReader reader = new System.IO.StreamReader(filename))
+                {
+                    char[] buffer = new char[ChunkSize];
+                    System.Text.StringBuilder leftover = new System.Text.StringBuilder();
+                    int read;
+
+                    while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        leftover.Append(buffer, 0, read);
+
+                        int lastNewline = leftover.ToString().LastIndexOf('\n');
+                        if (lastNewline >= 0)
+                        {
+                            string chunk = leftover.ToString(0, lastNewline + 1);
+                            leftover.Remove(0, lastNewline + 1);
+
+                            // ✅ 'chunk' now contains only complete lines
+                            // process chunk here...
+                            importedCidrs = LoadCidrsFromString(importedCidrs, chunk);
+                        }
+
+                    }
+
+                    // any remaining partial line at end:
+                    if (leftover.Length > 0)
+                    {
+                        string last = leftover.ToString();
+
+                        // process last partial line
+                        importedCidrs = LoadCidrsFromString(importedCidrs, last);
+                    }
+                }
+
+
+
+
+
+
+
 
                 return (importedCidrs);
 
@@ -399,21 +454,25 @@ namespace ipworker
 
 
 
-        private static List<Cidr> LoadCidrsFromString(string srcData)
+        private static List<Cidr> LoadCidrsFromString(List<Cidr> importedCidrs, string srcData)
         {
 
             Console.WriteLine("Parse " + srcData.Length.ToString("N0") + " bytes of data");
 
 
-            String[] srcDataArr = srcData.Split(new char[] { 'n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (importedCidrs == null)
+            {
+                importedCidrs = new List<Cidr>();
+            }
 
-            List<Cidr> importedCidrs = new List<Cidr>();
-            foreach (String str in srcDataArr)
+
+            String[] srcDataArr = srcData.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            for (int l=0; l<srcDataArr.Length;l++)
             {
 
 
-                
-                string strPrepped = str;
+                string strPrepped = srcDataArr[l];
 
                 //for reading csv
                 strPrepped = strPrepped.Replace(";", " ");
@@ -431,7 +490,7 @@ namespace ipworker
 
                 //ipv6 cidrs
                 importedCidrs = LoadCidrsFromStringInner(importedCidrs, strPrepped, "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(\\/((1(1[0-9]|2[0-8]))|([0-9][0-9])|([0-9])))");
-                
+
                 //ipv4 cidrs
                 importedCidrs = LoadCidrsFromStringInner(importedCidrs, strPrepped, "(([0-9]{1,3}\\.){3}[0-9]{1,3})/[0-9]{1,2}\\s");
 
@@ -444,7 +503,10 @@ namespace ipworker
 
 
 
-
+                if ((l % 2000) == 0)
+                {
+                    Console.Write(".");
+                }
 
 
             }
