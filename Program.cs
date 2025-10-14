@@ -36,7 +36,7 @@ namespace ipworker
             {
                 LogForFileAndConsoleLine();
                 LogForFileAndConsoleLine("Add a range of CIDR's to list");
-                LogForFileAndConsoleLine("ipworker.exe [WorkingListFilename] add [file, filepattern or url to add]");
+                LogForFileAndConsoleLine("ipworker.exe [WorkingListFilename] add [file, filepattern or url to add] [threshold=X]");
 
                 LogForFileAndConsoleLine();
                 LogForFileAndConsoleLine("Remove a range of CIDR's from list");
@@ -87,7 +87,9 @@ namespace ipworker
                 if (System.IO.File.Exists(WorkingListFilename))
                 {
                     //read file
-                    WorkingCidrList = LoadCidrsFromFile(WorkingListFilename);
+                    Dictionary<Cidr, int> loadedWithCount = LoadCidrsFromFile(WorkingListFilename);
+
+                    WorkingCidrList = LoadCidrsparseForThreshold(loadedWithCount, 0);
 
                     LogForFileAndConsoleLine(WorkingCidrList.Count.ToString("N0") + " items loaded and prepared from list '" + WorkingListFilename + "'");
 
@@ -124,7 +126,22 @@ namespace ipworker
                         throw new ArgumentException("Missing arguments!");
                     }
 
+
                     string srcFilename = args[2];
+
+
+                    int threshold = 1;
+                    if (args.Count() >= 4)
+                    {
+                        string thresholdStr = "threshold=";
+                        if (args[3].StartsWith(thresholdStr, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            string x = args[3].Substring(args[3].IndexOf(thresholdStr, StringComparison.InvariantCultureIgnoreCase) + thresholdStr.Length);
+                            threshold = int.Parse(x);
+                        }
+                    }
+
+
 
 
 
@@ -136,7 +153,11 @@ namespace ipworker
 
                         string content = new System.Net.WebClient().DownloadString(srcFilename);
 
-                        List<Cidr> cidrsToImport = LoadCidrsFromString(null, content);
+                        Dictionary<Cidr, int> loadedWithCount = LoadCidrsFromString(null, content);
+                        
+                        LogForFileAndConsoleLine("Total " + loadedWithCount.Count.ToString("N0") + " items found - pick only cidrs mentioned more than threshold=" + threshold + " times");
+
+                        List<Cidr> cidrsToImport = LoadCidrsparseForThreshold(loadedWithCount, threshold);
 
                         if (cidrsToImport != null)
                         {
@@ -160,7 +181,11 @@ namespace ipworker
 
                             LogForFileAndConsoleLine("Add from file '" + System.IO.Path.GetFileName(files[f]) + "'");
 
-                            List<Cidr> cidrsToImport = LoadCidrsFromFile(files[f]);
+                            Dictionary<Cidr, int> loadedWithCount = LoadCidrsFromFile(files[f]);
+
+                            LogForFileAndConsoleLine("Total " + loadedWithCount.Count.ToString("N0") + " items found - pick only cidrs mentioned more than threshold=" + threshold + " times");
+
+                            List<Cidr> cidrsToImport = LoadCidrsparseForThreshold(loadedWithCount, threshold);
 
                             if (cidrsToImport != null)
                             {
@@ -307,7 +332,9 @@ namespace ipworker
 
                         LogForFileAndConsoleLine("Load items to remove from file '" + file + "'");
 
-                        List<Cidr> cidrsToRemoveThis = LoadCidrsFromFile(file);
+                        Dictionary<Cidr, int> loadedWithCount = LoadCidrsFromFile(file);
+
+                        List<Cidr> cidrsToRemoveThis = LoadCidrsparseForThreshold(loadedWithCount, 0);
 
 
                         if (cidrsToRemoveThis != null)
@@ -436,7 +463,7 @@ namespace ipworker
 
 
 
-        private static List<Cidr> LoadCidrsFromFile(string filename)
+        private static Dictionary<Cidr, int> LoadCidrsFromFile(string filename)
         {
 
             if (System.IO.File.Exists(filename))
@@ -446,7 +473,7 @@ namespace ipworker
                 //String srcData = System.IO.File.ReadAllText(filename);
 
 
-                List<Cidr> importedCidrs = new List<Cidr>();
+                Dictionary<Cidr, int> importedCidrs = new Dictionary<Cidr, int>();
 
 
 
@@ -505,7 +532,7 @@ namespace ipworker
 
 
 
-        private static List<Cidr> LoadCidrsFromString(List<Cidr> importedCidrs, string srcData)
+        private static Dictionary<Cidr, int> LoadCidrsFromString(Dictionary<Cidr, int> importedCidrs, string srcData)
         {
 
             LogForFileAndConsoleLine("Parse " + srcData.Length.ToString("N0") + " bytes of data");
@@ -513,7 +540,7 @@ namespace ipworker
 
             if (importedCidrs == null)
             {
-                importedCidrs = new List<Cidr>();
+                importedCidrs = new Dictionary<Cidr, int>();
             }
 
 
@@ -573,7 +600,7 @@ namespace ipworker
         }
 
 
-        private static List<Cidr> LoadCidrsFromStringInner(List<Cidr> list, string data, string pattern)
+        private static Dictionary<Cidr, int> LoadCidrsFromStringInner(Dictionary<Cidr, int> list, string data, string pattern)
         {
 
             MatchCollection matches = Regex.Matches(data, pattern);
@@ -582,9 +609,20 @@ namespace ipworker
             {
                 Cidr.TryParse(match.Value.Trim(), out Cidr itm);
 
-                if ((itm != null) && (!list.Contains(itm)))
+                if (itm != null)
                 {
-                    list.Add(itm);
+                    int count = 0;
+
+                    if (list.Keys.Contains(itm))
+                    {
+                        count = list[itm];
+                    }
+
+                    count++;
+
+                    list[itm] = count;
+
+                    break; //first match only
                 }
 
             }
@@ -592,6 +630,32 @@ namespace ipworker
             return (list);
 
         }
+
+
+
+        private static List<Cidr> LoadCidrsparseForThreshold(Dictionary<Cidr, int> list, int threshold)
+        {
+
+            List<Cidr> cidrsToImport = new List<Cidr>();
+
+            foreach (Cidr c in list.Keys)
+            {
+                if (list[c] >= threshold)
+                {
+                    cidrsToImport.Add(c);
+                }
+            }
+
+            return (cidrsToImport);
+        }
+
+
+
+
+
+
+
+
 
 
 

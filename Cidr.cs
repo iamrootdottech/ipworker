@@ -80,8 +80,15 @@ namespace ipworker
             unchecked
             {
                 int hash = 17;
-                hash = hash * 23 + BaseAddress.GetHashCode();
-                hash = hash * 23 + PrefixLength.GetHashCode();
+                byte[] bytes = BaseAddress.GetAddressBytes();
+
+                // Fold the bytes into the hash
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    hash = hash * 31 + bytes[i];
+                }
+
+                hash = hash * 31 + PrefixLength;
                 return hash;
             }
         }
