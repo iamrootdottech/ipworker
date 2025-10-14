@@ -49,6 +49,16 @@ namespace ipworker
                 LogForFileAndConsoleLine();
                 LogForFileAndConsoleLine("Aggregate list");
                 LogForFileAndConsoleLine("ipworker.exe [WorkingListFilename] aggregate [ipv4|ipv6] [prefix] [mincount]");
+
+                /*
+                ipworker.exe listofbots.txt add logfile.txt (will parse logfile.txt for cidrs and ips, and add them to listofbots.txt)
+                ipworker.exe listofbots.txt add logfile.txt threshold=5 (will parse logfile.txt for cidrs and ips, and add any IP/CIDR mentions 5 times or more them to listofbots.txt)
+                ipworker.exe listofbots.txt add *.log (will parse all *.log files for cidrs and ips, and add them to listofbots.txt)
+                ipworker.exe listofbots.txt add https://github.com/antoinevastel/avastel-bot-ips-lists/blob/master/avastel-proxy-bot-ips-blocklist-8days.txt (will add cidrs and ips from the url to listofbots.txt)
+                ipworker.exe listofbots.txt aggregate ipv4 /24 2 (aggregate ipv4 into /24 prefixes if more than 2 ip's present)
+                ipworker.exe listofbots.txt aggregate ipv6 /48 10 (aggregate ipv6 into /48 prefixes if more than 10 ip's present)
+                ipworker.exe listofbots.txt remove https://developers.google.com/search/apis/ipranges/googlebot.json (remove known googlbot ip's from listofbots.txt)
+                */
             }
             else
             {
